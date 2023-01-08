@@ -1,6 +1,7 @@
 package pl.infoshare.requests.vehicles;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.Nullable;
@@ -9,6 +10,8 @@ import pl.infoshare.requests.vehicles.model.Vehicle;
 import pl.infoshare.requests.vehicles.model.VehicleSearch;
 import pl.infoshare.requests.vehicles.model.VehicleUpdateRequest;
 
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @RestController
@@ -29,8 +32,10 @@ public class VehicleController {
     }
 
     @GetMapping(value = "/vehicles", params = "needsReview")
-    public List<Vehicle> findAllVehicles() {
-        return vehicleFindService.findVehiclesNeedingReview();
+    public ResponseEntity<List<Vehicle>> findAllVehicles() {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.maxAge(Duration.of(1, ChronoUnit.MINUTES)).noTransform().mustRevalidate())
+                .body(vehicleFindService.findVehiclesNeedingReview());
     }
 
     @PostMapping("/vehicles")
@@ -45,7 +50,12 @@ public class VehicleController {
     }
 
     @DeleteMapping("/vehicles/{id}")
-    public void deleteVehicle(@PathVariable int id) {
-        vehicleRepository.delete(id);
+    public ResponseEntity<?> deleteVehicle(@PathVariable int id) {
+        var result = vehicleRepository.delete(id);
+        if (result) {
+            return ResponseEntity.noContent().build();
+        }
+
+        return ResponseEntity.notFound().build();
     }
 }
